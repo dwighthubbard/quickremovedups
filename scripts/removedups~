@@ -1,0 +1,45 @@
+#!/usr/bin/python3
+import argparse
+import logging
+import os
+# import psutil
+import quickcompare.filesize
+import quickcompare.hash
+import quickcompare.operations
+from quickcompare.utility import dupfiles_count
+
+
+logger = logging.getLogger('compare.py')
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('directory')
+    parser.add_argument(
+        '--remove_dups', default=False, action='store_true', help='Remove duplicates'
+    )
+    parser.add_argument(
+        '--full_checksum',
+        default=False,
+        action='store_true',
+        help='Calculate a full checksum of the file'
+    )
+    args = parser.parse_args()
+
+    dup_sizes = quickcompare.filesize.duplicates(args.directory)
+    logger.debug('size dups: %d' % dupfiles_count(dup_sizes))
+
+    # Make sure we don't pound the hell out of the disk
+    # p = psutil.Process(os.getpid())
+    # p.set_ionice(psutil.IOPRIO_CLASS_IDLE)
+
+    if args.full_checksum:
+        dup_hash = quickcompare.hash.duplicates_in_dict(dup_sizes, limit=None)
+        logger.debug('hash dups full: %d' % dupfiles_count(dup_hash))
+    else:
+        dup_hash = quickcompare.hash.duplicates_in_dict(dup_sizes, limit=4096)
+        logger.debug('hash dups 4096: %d' % dupfiles_count(dup_hash))
+
+    if args.remove_dups:
+        quickcompare.operations.remove(dup_hash)

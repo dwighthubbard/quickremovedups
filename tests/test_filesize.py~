@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+import logging
+import os
+import quickcompare.filesize
+from tempfile import TemporaryDirectory
+from unittest import main, TestCase
+
+
+class TestFilesize(TestCase):
+
+    def create_file_of_size(self, filename, size):
+        logging.debug('Creating file: %s of size %d' % (filename, size))
+        with open(filename, 'w') as filehandle:
+            filehandle.write(' ' * size)
+
+    def test_duplicates(self):
+        count = 0
+        with TemporaryDirectory() as tempdir:
+            for filesize in [100, 1024, 1024, 2048, 2048, 0, 0]:
+                count += 1
+                self.create_file_of_size(os.path.join(tempdir, str(count)), filesize)
+            result = dict(quickcompare.filesize.duplicates(tempdir))
+        self.assertDictEqual(
+            result,
+            {
+                1024: [os.path.join(tempdir, '2'), os.path.join(tempdir, '3')],
+                2048: [os.path.join(tempdir, '5'), os.path.join(tempdir, '4')]
+            }
+        )
+
+    def test_duplicates_status(self):
+        count = 0
+        with TemporaryDirectory() as tempdir:
+            for filesize in [100, 1024, 1024, 2048, 2048, 0, 0]:
+                count += 1
+                self.create_file_of_size(os.path.join(tempdir, str(count)), filesize)
+            result = dict(quickcompare.filesize.duplicates(tempdir, status=True))
+        self.assertDictEqual(
+            result,
+            {
+                1024: [os.path.join(tempdir, '2'), os.path.join(tempdir, '3')],
+                2048: [os.path.join(tempdir, '5'), os.path.join(tempdir, '4')]
+            }
+        )
+
+    def test_dupfiles_count(self):
+        input_dict = {
+            1024: ['/tmp/tmpux_s30x_/2', '/tmp/tmpux_s30x_/3'],
+            2048: ['/tmp/tmpux_s30x_/5', '/tmp/tmpux_s30x_/4']
+        }
+        result = quickcompare.filesize.dupfiles_count(input_dict)
+        self.assertEqual(result, 4)
+
+
+if __name__ == '__main__':
+    main()
